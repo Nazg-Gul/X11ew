@@ -39,6 +39,8 @@ static void openTestWindow(void) {
 }
 
 int main(int argc, char* argv[]) {
+  (void) argc;  // Ignored.
+  (void) argv;  // Ignored.
   if (x11ewInit() == X11EW_SUCCESS) {
     printf("X11 found\n");
     openTestWindow();
