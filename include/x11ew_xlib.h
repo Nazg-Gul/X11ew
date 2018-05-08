@@ -174,7 +174,7 @@ typedef Window tXCreateWindow(
     unsigned int height,
     unsigned int border_width,
     int depth,
-    unsigned int class,
+    unsigned int class_,
     Visual* visual,
     unsigned long valuemask,
     XSetWindowAttributes* attributes);
@@ -692,7 +692,7 @@ typedef int tXGetWindowProperty(
     Atom property,
     long long_offset,
     long long_length,
-    Bool delete,
+    Bool delete_,
     Atom req_type,
     Atom* actual_type_return,
     int* actual_format_return,
@@ -817,7 +817,7 @@ typedef Status tXQueryBestCursor(
     unsigned int* height_return);
 typedef Status tXQueryBestSize(
     Display* display,
-    int class,
+    int class_,
     Drawable which_screen,
     unsigned int width,
     unsigned int height,
