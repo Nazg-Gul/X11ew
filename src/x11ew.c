@@ -69,3 +69,12 @@ int x11ewInit(void) {
 
 #undef INIT_LIBRARY
 }
+
+const char* x11ewErrorString(int error) {
+  switch (error) {
+    case X11EW_SUCCESS: return "SUCCESS";
+    case X11EW_ERROR_OPEN_FAILED: return "OPEN_FAILED";
+    case X11EW_ERROR_ATEXIT_FAILED: return "ATEXIT_FAILED";
+  }
+  return "UNKNOWN";
+}

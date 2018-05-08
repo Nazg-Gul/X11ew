@@ -34,6 +34,7 @@ enum {
 };
 
 int x11ewInit(void);
+const char* x11ewErrorString(int error);
 
 #ifdef __cplusplus
 }
