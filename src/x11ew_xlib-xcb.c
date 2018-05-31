@@ -30,7 +30,7 @@ xcb_connection_t* XGetXCBConnection(Display *dpy) {
 }
 
 void XSetEventQueueOwner(Display* dpy, enum XEventQueueOwner owner) {
-  return XSetEventQueueOwner(dpy, owner);
+  return XSetEventQueueOwner_impl(dpy, owner);
 }
 
 int __x11ew_init_xlib_xcb(void) {
