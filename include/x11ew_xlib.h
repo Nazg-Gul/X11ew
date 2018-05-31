@@ -13,9 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifndef __X11EW_XLIB_H__
 #define __X11EW_XLIB_H__
@@ -100,9 +97,6 @@ typedef char* tXKeysymToString(KeySym keysym);
 typedef int (* tXSynchronize(
     Display* display,
     Bool onoff)) ( Display* /* display */ );
-typedef int (* tXSetAfterFunction(
-    Display* display,
-    int (*procedure) ( Display* /* display */ ))) ( Display* /* display */ );
 typedef Atom tXInternAtom(
     Display* display,
     _Xconst char* atom_name,
@@ -1387,7 +1381,6 @@ extern tXGetDefault *XGetDefault_impl;
 extern tXDisplayName *XDisplayName_impl;
 extern tXKeysymToString *XKeysymToString_impl;
 extern tXSynchronize *XSynchronize_impl;
-extern tXSetAfterFunction *XSetAfterFunction_impl;
 extern tXInternAtom *XInternAtom_impl;
 extern tXInternAtoms *XInternAtoms_impl;
 extern tXCopyColormapAndFree *XCopyColormapAndFree_impl;

@@ -28,6 +28,7 @@ COPYRIGHT = """/*
 
 
 LIBRARIES = {"Xlib.h": "libX11.so",
+             "Xlibint.h": "libX11.so",
              "Xlib-xcb.h": "libX11-xcb.so"}
 
 
@@ -119,10 +120,27 @@ def getArgumentInfoFromTokens(tokens):
     if tokens[-1].kind == TokenKind.COMMENT:
         name = getArgumentNameFromComment(tokens[-1].spelling)
         type_tokens = tokens[:-1]
-    elif tokens[-1].spelling in ("len", "str"):
+    else:
         # TODO(sergey): Make the check more reliable.
-        name = getArgumentNameFromComment(tokens[-1].spelling)
-        type_tokens = tokens[:-1]
+        if tokens[-1].spelling in ("len", "str"):
+            name = tokens[-1].spelling
+            type_tokens = tokens[:-1]
+        elif len(tokens) >= 2 and tokens[-2].spelling == '*':
+            name = tokens[-1].spelling
+            type_tokens = tokens[:-1]
+        elif len(tokens) >= 2 and tokens[-2].kind == TokenKind.KEYWORD \
+                              and tokens[-1].kind != TokenKind.KEYWORD \
+                              and tokens[-1].kind != TokenKind.PUNCTUATION:
+            name = tokens[-1].spelling
+            type_tokens = tokens[:-1]
+        elif len(tokens) == 2 and \
+             tokens[-1].kind not in (TokenKind.KEYWORD,
+                                     TokenKind.PUNCTUATION):
+            name = tokens[-1].spelling
+            type_tokens = tokens[:-1]
+        elif tokens[-1].spelling not in ('void', '...'):
+            name = 'arg'
+            type_tokens = tokens[:]
     argument_type = joinTypeTokens(type_tokens)
     argument_type = argument_type.replace("(* )", "(*)")
     argument_type = argument_type.replace("[ ", "[").replace(" ]", "]")
@@ -272,6 +290,23 @@ def generateFunctionArgumentsDeclaration(function, start_column=0):
     return result
 
 
+def wrapCodeWithIfdef(function_name, code):
+    """
+    For a given funtion name, wraps code with corresponding ifdef.
+
+    This is annoying manual way to deal with functions delcared
+    inside of if-def blocks/
+    """
+    if function_name in ("_XOpenFileMode",
+                         "_XOpenFile",
+                         "_XFopenFile",
+                         "_XAccessFile"):
+        return "#if defined(WIN32)\n" + code +"#endif\n"
+    elif function_name == "Data":
+        return "#ifdef DataRoutineIsProcedure\n" + code +"#endif\n"
+    return code
+
+
 def generateFunctionDeclaration(function):
     """
     Generate declaration for the function.
@@ -349,10 +384,17 @@ def generateFunctionWrappers(functions):
         argument_names = [ arg["name"] for arg in function["arguments"] ]
         joined_arguments = ", ".join(argument_names)
         declaration = generateFunctionDeclaration(function)
-        result += declaration + " {\n"
-        result += "  return {}_impl({});\n" . format(function["name"],
-                                                     joined_arguments)
-        result += "}\n\n"
+        code = declaration + " {\n"
+        call = "{}_impl({})" . format(function["name"],
+                               joined_arguments)
+        if function["name"] == "_XIOError":
+            call = "  " + call + ";\n"
+            call += "  abort();\n"
+        else:
+            call = "  return " + call + ";\n"
+        code += call
+        code += "}\n"
+        result += wrapCodeWithIfdef(function["name"], code) + "\n"
     return result
 
 
@@ -405,9 +447,6 @@ def saveWranglerFiles(filename,
     header_guard = "__" + identifier(base_name.upper()) + "_H__"
     with open(header_filename, "w") as f:
         f.write(COPYRIGHT)
-        f.write("#ifdef __cplusplus\n")
-        f.write("extern \"C\" {\n")
-        f.write("#endif\n")
         f.write("\n#ifndef {}\n#define {}\n\n" . format(header_guard,
                                                         header_guard))
         f.write("#ifdef __cplusplus\n")
@@ -460,32 +499,60 @@ def saveWranglerFiles(filename,
         f.write("}\n\n")
 
 
-def main(filenames):
+def main(filename):
     functions = []
-    for filename in filenames:
-        # Initialize state machine.
-        in_extern = False
-        extern_tokens = []
-        # Initialize parser.
-        idx = clang.cindex.Index.create()
-        tu = idx.parse(filename)
-        for token in tu.get_tokens(extent=tu.cursor.extent):
-            if token.kind == TokenKind.KEYWORD:
-                if token.spelling == 'extern':
-                    in_extern = True
-                    extern_tokens.append(token)
-                elif in_extern:
-                    extern_tokens.append(token)
-            elif token.kind == TokenKind.PUNCTUATION:
-                if token.spelling == ';':
-                    analyzeExternTokens(functions, extern_tokens)
-                    extern_tokens = []
-                    in_extern = False
-                elif in_extern:
-                    extern_tokens.append(token)
-            elif in_extern:
-                spelling = token.spelling
+    # Initialize state machine.
+    in_extern = False
+    extern_tokens = []
+    is_first_opening_bracket = False
+    is_expecting_no_star = False
+    need_check_for_function = False
+    # Initialize parser.
+    idx = clang.cindex.Index.create()
+    tu = idx.parse(filename)
+    for token in tu.get_tokens(extent=tu.cursor.extent):
+        if token.spelling == "#define":
+            continue
+        if token.kind == TokenKind.KEYWORD:
+            if token.spelling == 'extern':
+                in_extern = True
+                is_first_opening_bracket = True
+                is_expecting_no_star = False
                 extern_tokens.append(token)
+            elif in_extern:
+                extern_tokens.append(token)
+                is_expecting_no_star = False
+        elif token.kind == TokenKind.PUNCTUATION:
+            if token.spelling == ';':
+                if len(extern_tokens) > 1:
+                    analyzeExternTokens(functions, extern_tokens)
+                    if need_check_for_function:
+                        function = functions[-1]
+                        if function["name"].endswith("_fn")  or \
+                           function["name"].endswith("Function"):
+                            functions = functions[:-1]
+                extern_tokens = []
+                in_extern = False
+                need_check_for_function = False
+            elif in_extern:
+                if token.spelling == '(':
+                    if is_first_opening_bracket:
+                        is_expecting_no_star = True
+                    else:
+                        is_expecting_no_star = False
+                    is_first_opening_bracket = False
+                elif token.spelling == '*':
+                    if is_expecting_no_star:
+                        need_check_for_function = True
+                else:
+                    is_expecting_no_star = False
+                extern_tokens.append(token)
+        elif in_extern:
+            is_expecting_no_star = False
+            spelling = token.spelling
+            if spelling in ('_XLIB_COLD', '_X_NORETURN'):
+                continue
+            extern_tokens.append(token)
     # Now we have list of all functions and can do some real
     # wrangler geenration now.
     function_typedefs = generateTypedefs(functions)
@@ -502,7 +569,10 @@ def main(filenames):
 
 
 if __name__ == "__main__":
-    headers = ["/usr/include/X11/Xlib.h"]
+    headers = ["/usr/include/X11/Xlib.h",
+               "/usr/include/X11/Xlibint.h",
+              ]
     if len(sys.argv) == 2:
-        header = sys.argv[1]
-    main(headers)
+        headers = [sys.argv[1]]
+    for header in headers:
+        main(header)

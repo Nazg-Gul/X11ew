@@ -18,8 +18,13 @@
 #define __X11EW_H__
 
 #include <X11/Xlib.h>
+#include <X11/Xlibint.h>
+
+#undef min
+#undef max
 
 #include "x11ew_xlib.h"
+#include "x11ew_xlibint.h"
 #include "x11ew_xlib-xcb.h"
 
 #ifdef __cplusplus

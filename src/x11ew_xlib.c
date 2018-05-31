@@ -43,7 +43,6 @@ tXGetDefault *XGetDefault_impl;
 tXDisplayName *XDisplayName_impl;
 tXKeysymToString *XKeysymToString_impl;
 tXSynchronize *XSynchronize_impl;
-tXSetAfterFunction *XSetAfterFunction_impl;
 tXInternAtom *XInternAtom_impl;
 tXInternAtoms *XInternAtoms_impl;
 tXCopyColormapAndFree *XCopyColormapAndFree_impl;
@@ -566,12 +565,6 @@ int (* XSynchronize(
     Display* display,
     Bool onoff)) ( Display* /* display */ ) {
   return XSynchronize_impl(display, onoff);
-}
-
-int (* XSetAfterFunction(
-    Display* display,
-    int (*procedure) ( Display* /* display */ ))) ( Display* /* display */ ) {
-  return XSetAfterFunction_impl(display, procedure);
 }
 
 Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists) {
@@ -2660,7 +2653,6 @@ int __x11ew_init_xlib(void) {
   _LIBRARY_FIND(library, XDisplayName);
   _LIBRARY_FIND(library, XKeysymToString);
   _LIBRARY_FIND(library, XSynchronize);
-  _LIBRARY_FIND(library, XSetAfterFunction);
   _LIBRARY_FIND(library, XInternAtom);
   _LIBRARY_FIND(library, XInternAtoms);
   _LIBRARY_FIND(library, XCopyColormapAndFree);

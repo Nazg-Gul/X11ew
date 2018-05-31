@@ -21,12 +21,14 @@ include_directories(include)
 add_library(x11ew
   src/x11ew.c
   src/x11ew_xlib.c
+  src/x11ew_xlibint.c
   src/x11ew_xlib-xcb.c
 
   src/x11ew_private.h
 
   include/x11ew.h
   include/x11ew_xlib.h
+  include/x11ew_xlibint.h
   include/x11ew_xlib-xcb.h
 )
 

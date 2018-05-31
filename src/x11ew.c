@@ -37,6 +37,7 @@ DynamicLibrary x11ew_dynamic_library_open_find(const char** paths) {
 
 static void x11ewExit(void) {
   __x11ew_exit_xlib();
+  __x11ew_exit_xlibint();
   __x11ew_exit_xlib_xcb();
 }
 
@@ -65,6 +66,7 @@ int x11ewInit(void) {
   initialized = 1;
   /* Load libraries. */
   INIT_LIBRARY(xlib);
+  INIT_LIBRARY(xlibint);
   INIT_LIBRARY(xlib_xcb);
   /* We are al done. */
   return result;
