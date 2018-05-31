@@ -13,9 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef __X11EW_XLIB_H__
 #define __X11EW_XLIB_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Function types. */
 typedef int t_Xmblen(char* str, int len);
@@ -1774,5 +1781,9 @@ extern tXFreeEventData *XFreeEventData_impl;
 /* Private methods, only used by wrangler. */
 int __x11ew_init_xlib(void);
 void __x11ew_exit_xlib(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* __X11EW_XLIB_H__ */

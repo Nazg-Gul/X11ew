@@ -20,6 +20,7 @@
 #include <X11/Xlib.h>
 
 #include "x11ew_xlib.h"
+#include "x11ew_xlib-xcb.h"
 
 #ifdef __cplusplus
 extern "C" {

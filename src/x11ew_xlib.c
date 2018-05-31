@@ -678,11 +678,11 @@ Window XCreateWindow(
     unsigned int height,
     unsigned int border_width,
     int depth,
-    unsigned int class,
+    unsigned int class_,
     Visual* visual,
     unsigned long valuemask,
     XSetWindowAttributes* attributes) {
-  return XCreateWindow_impl(display, parent, x, y, width, height, border_width, depth, class, visual, valuemask, attributes);
+  return XCreateWindow_impl(display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes);
 }
 
 Colormap* XListInstalledColormaps(Display* display, Window w, int* num_return) {
@@ -1525,14 +1525,14 @@ int XGetWindowProperty(
     Atom property,
     long long_offset,
     long long_length,
-    Bool delete,
+    Bool delete_,
     Atom req_type,
     Atom* actual_type_return,
     int* actual_format_return,
     unsigned long* nitems_return,
     unsigned long* bytes_after_return,
     unsigned char** prop_return) {
-  return XGetWindowProperty_impl(display, w, property, long_offset, long_length, delete, req_type, actual_type_return, actual_format_return, nitems_return, bytes_after_return, prop_return);
+  return XGetWindowProperty_impl(display, w, property, long_offset, long_length, delete_, req_type, actual_type_return, actual_format_return, nitems_return, bytes_after_return, prop_return);
 }
 
 Status XGetWindowAttributes(Display* display, Window w, XWindowAttributes* window_attributes_return) {
@@ -1751,13 +1751,13 @@ Status XQueryBestCursor(
 
 Status XQueryBestSize(
     Display* display,
-    int class,
+    int class_,
     Drawable which_screen,
     unsigned int width,
     unsigned int height,
     unsigned int* width_return,
     unsigned int* height_return) {
-  return XQueryBestSize_impl(display, class, which_screen, width, height, width_return, height_return);
+  return XQueryBestSize_impl(display, class_, which_screen, width, height, width_return, height_return);
 }
 
 Status XQueryBestStipple(

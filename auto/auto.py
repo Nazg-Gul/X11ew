@@ -27,7 +27,8 @@ COPYRIGHT = """/*
 """
 
 
-LIBRARIES = {"Xlib.h": "libX11.so", "test.h": "x"}
+LIBRARIES = {"Xlib.h": "libX11.so",
+             "Xlib-xcb.h": "libX11-xcb.so"}
 
 
 def isFunctionPrototype(tokens):
@@ -125,6 +126,8 @@ def getArgumentInfoFromTokens(tokens):
     argument_type = joinTypeTokens(type_tokens)
     argument_type = argument_type.replace("(* )", "(*)")
     argument_type = argument_type.replace("[ ", "[").replace(" ]", "]")
+    if name in ("class", "delete", ):
+        name += "_"
     return {"name": name,
             "type": argument_type}
 
@@ -327,7 +330,7 @@ def generateImplDeclarations(functions):
     return result
 
 
-def generateImplDeclarations(functions):
+def generateImplDefinitions(functions):
     """
     Generate definition for implementation functions.
     """
@@ -377,6 +380,14 @@ def getLibrariesListCode(filename):
     return result
 
 
+def identifier(str):
+    """
+    Make string usable a an identifier
+    """
+    result = str.replace('-', "_")
+    return result
+
+
 def saveWranglerFiles(filename,
                       function_typedefs,
                       function_impl_declarations,
@@ -391,20 +402,31 @@ def saveWranglerFiles(filename,
     root_dir = os.path.dirname(root_dir)
     # Write header.
     header_filename = os.path.join(root_dir, "include", base_name + ".h")
-    header_guard = "__" + base_name.upper() + "_H__"
+    header_guard = "__" + identifier(base_name.upper()) + "_H__"
     with open(header_filename, "w") as f:
         f.write(COPYRIGHT)
+        f.write("#ifdef __cplusplus\n")
+        f.write("extern \"C\" {\n")
+        f.write("#endif\n")
         f.write("\n#ifndef {}\n#define {}\n\n" . format(header_guard,
                                                         header_guard))
+        f.write("#ifdef __cplusplus\n")
+        f.write("extern \"C\" {\n")
+        f.write("#endif\n\n")
         f.write("/* Function types. */\n")
         f.write(function_typedefs)
         f.write("\n\n/* Function implementation declarations. */\n")
         f.write(function_impl_declarations)
         f.write("\n/* Private methods, only used by wrangler. */\n" .
                 format(library_name))
-        f.write("int __x11ew_init_{}(void);\n" . format(library_name))
-        f.write("void __x11ew_exit_{}(void);\n" . format(library_name))
-        f.write("\n#endif  /* {} */\n" . format(header_guard))
+        f.write("int __x11ew_init_{}(void);\n" .
+                format(identifier(library_name)))
+        f.write("void __x11ew_exit_{}(void);\n" .
+                format(identifier(library_name)))
+        f.write("\n#ifdef __cplusplus\n")
+        f.write("}\n")
+        f.write("#endif\n\n")
+        f.write("#endif  /* {} */\n" . format(header_guard))
     # Write implementation.
     impl_filename = os.path.join(root_dir, "src", base_name + ".c")
     with open(impl_filename, "w") as f:
@@ -416,7 +438,8 @@ def saveWranglerFiles(filename,
         f.write(function_impl_definitions)
         f.write("\n/* Function wrappers. */\n")
         f.write(function_wrappers)
-        f.write("\nint __x11ew_init_{}(void)" . format(library_name) + " {\n")
+        f.write("\nint __x11ew_init_{}(void)" .
+                 format(identifier(library_name)) + " {\n")
         f.write("  /* Library paths. */\n")
         f.write(getLibrariesListCode(filename))
         f.write("  /* Load library. */\n")
@@ -428,7 +451,8 @@ def saveWranglerFiles(filename,
         f.write(function_loaders)
         f.write("  return X11EW_SUCCESS;\n")
         f.write("}\n\n")
-        f.write("void __x11ew_exit_{}(void)" . format(library_name) + " {\n")
+        f.write("void __x11ew_exit_{}(void)" .
+                format(identifier(library_name)) + " {\n")
         f.write("  if (library != NULL) {\n")
         f.write("    dynamic_library_close(library);\n")
         f.write("    library = NULL;\n")
@@ -436,36 +460,37 @@ def saveWranglerFiles(filename,
         f.write("}\n\n")
 
 
-def main(filename):
-    # Initialize state machine.
-    in_extern = False
-    extern_tokens = []
+def main(filenames):
     functions = []
-    # Initialize parser.
-    idx = clang.cindex.Index.create()
-    tu = idx.parse(filename)
-    for token in tu.get_tokens(extent=tu.cursor.extent):
-        if token.kind == TokenKind.KEYWORD:
-            if token.spelling == 'extern':
-                in_extern = True
-                extern_tokens.append(token)
+    for filename in filenames:
+        # Initialize state machine.
+        in_extern = False
+        extern_tokens = []
+        # Initialize parser.
+        idx = clang.cindex.Index.create()
+        tu = idx.parse(filename)
+        for token in tu.get_tokens(extent=tu.cursor.extent):
+            if token.kind == TokenKind.KEYWORD:
+                if token.spelling == 'extern':
+                    in_extern = True
+                    extern_tokens.append(token)
+                elif in_extern:
+                    extern_tokens.append(token)
+            elif token.kind == TokenKind.PUNCTUATION:
+                if token.spelling == ';':
+                    analyzeExternTokens(functions, extern_tokens)
+                    extern_tokens = []
+                    in_extern = False
+                elif in_extern:
+                    extern_tokens.append(token)
             elif in_extern:
+                spelling = token.spelling
                 extern_tokens.append(token)
-        elif token.kind == TokenKind.PUNCTUATION:
-            if token.spelling == ';':
-                analyzeExternTokens(functions, extern_tokens)
-                extern_tokens = []
-                in_extern = False
-            elif in_extern:
-                extern_tokens.append(token)
-        elif in_extern:
-            spelling = token.spelling
-            extern_tokens.append(token)
     # Now we have list of all functions and can do some real
     # wrangler geenration now.
     function_typedefs = generateTypedefs(functions)
     function_impl_declarations = generateImplDeclarations(functions)
-    function_impl_definitions = generateImplDeclarations(functions)
+    function_impl_definitions = generateImplDefinitions(functions)
     function_wrappers = generateFunctionWrappers(functions)
     function_loaders = generateFunctionLoaders(functions)
     saveWranglerFiles(filename,
@@ -477,7 +502,7 @@ def main(filename):
 
 
 if __name__ == "__main__":
-    header = "/usr/include/X11/Xlib.h"
+    headers = ["/usr/include/X11/Xlib.h"]
     if len(sys.argv) == 2:
         header = sys.argv[1]
-    main(header)
+    main(headers)
