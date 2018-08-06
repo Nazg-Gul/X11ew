@@ -27,7 +27,8 @@ COPYRIGHT = """/*
 """
 
 
-LIBRARIES = {"Xlib.h": "libX11.so",
+LIBRARIES = {"XKBlib.h": "libX11.so",
+             "Xlib.h": "libX11.so",
              "Xlibint.h": "libX11.so",
              "Xlib-xcb.h": "libX11-xcb.so"}
 
@@ -108,13 +109,36 @@ def getFunctionName(tokens):
 
 
 def getArgumentNameFromComment(comment):
-    return comment          \
-        .replace("/*", "")  \
-        .replace("*/", "")  \
-        .strip()
+    name = comment.replace("/*", "").replace("*/", "").strip()
+    return name.split(" ")[0]
+
+
+def stripLeadingComments(tokens):
+    new_tokens = []
+    leading_skipped = False
+    for token in tokens:
+        if token.kind == TokenKind.COMMENT:
+            if leading_skipped:
+                new_tokens.append(token)
+        else:
+            leading_skipped = True
+            new_tokens.append(token)
+    return new_tokens
+
+
+def leaveSingleTrailingComment(tokens):
+    while len(tokens) > 2:
+        if (tokens[-1].kind == TokenKind.COMMENT and
+            tokens[-2].kind == TokenKind.COMMENT):
+            tokens = tokens[:-1]
+        else:
+            break
+    return tokens
 
 
 def getArgumentInfoFromTokens(tokens):
+    tokens = stripLeadingComments(tokens)
+    tokens = leaveSingleTrailingComment(tokens)
     name = ""
     type_tokens = tokens
     if tokens[-1].kind == TokenKind.COMMENT:
@@ -144,7 +168,7 @@ def getArgumentInfoFromTokens(tokens):
     argument_type = joinTypeTokens(type_tokens)
     argument_type = argument_type.replace("(* )", "(*)")
     argument_type = argument_type.replace("[ ", "[").replace(" ]", "]")
-    if name in ("class", "delete", ):
+    if name in ("class", "delete", "protected", "new", ):
         name += "_"
     return {"name": name,
             "type": argument_type}
@@ -155,7 +179,7 @@ def analyzeArgumentTokens(arguments, tokens):
         return
     arg = getArgumentInfoFromTokens(tokens)
     if arg["type"] == "unsigned int":
-        if "keycode" in arg["name"]:
+        if "keycode" in arg["name"] or arg["name"] == "kc":
             return
     arguments.append(arg)
 
@@ -569,7 +593,8 @@ def main(filename):
 
 
 if __name__ == "__main__":
-    headers = ["/usr/include/X11/Xlib.h",
+    headers = ["/usr/include/X11/XKBlib.h",
+               "/usr/include/X11/Xlib.h",
                "/usr/include/X11/Xlibint.h",
               ]
     if len(sys.argv) == 2:
