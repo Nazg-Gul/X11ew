@@ -250,7 +250,6 @@ def analyzeExternTokens(functions, tokens):
                       "arguments": arguments})
 
 
-
 def functionHasVarargs(function):
     for argument in function["arguments"]:
         if argument["type"] == "...":
@@ -325,9 +324,9 @@ def wrapCodeWithIfdef(function_name, code):
                          "_XOpenFile",
                          "_XFopenFile",
                          "_XAccessFile"):
-        return "#if defined(WIN32)\n" + code +"#endif\n"
+        return "#if defined(WIN32)\n" + code + "#endif\n"
     elif function_name == "Data":
-        return "#ifdef DataRoutineIsProcedure\n" + code +"#endif\n"
+        return "#ifdef DataRoutineIsProcedure\n" + code + "#endif\n"
     return code
 
 
@@ -405,7 +404,7 @@ def generateFunctionWrappers(functions):
     for function in functions:
         if functionHasVarargs(function):
             continue
-        argument_names = [ arg["name"] for arg in function["arguments"] ]
+        argument_names = [arg["name"] for arg in function["arguments"]]
         joined_arguments = ", ".join(argument_names)
         declaration = generateFunctionDeclaration(function)
         code = declaration + " {\n"
@@ -552,7 +551,7 @@ def main(filename):
                     analyzeExternTokens(functions, extern_tokens)
                     if need_check_for_function:
                         function = functions[-1]
-                        if function["name"].endswith("_fn")  or \
+                        if function["name"].endswith("_fn") or \
                            function["name"].endswith("Function"):
                             functions = functions[:-1]
                 extern_tokens = []
@@ -595,8 +594,7 @@ def main(filename):
 if __name__ == "__main__":
     headers = ["/usr/include/X11/XKBlib.h",
                "/usr/include/X11/Xlib.h",
-               "/usr/include/X11/Xlibint.h",
-              ]
+               "/usr/include/X11/Xlibint.h"]
     if len(sys.argv) == 2:
         headers = [sys.argv[1]]
     for header in headers:
